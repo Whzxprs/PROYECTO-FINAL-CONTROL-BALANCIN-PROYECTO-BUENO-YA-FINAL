@@ -1,0 +1,17 @@
+build/
+build_check/
+build_current/
+build_actual/
+build_*/
+**/build/
+**/build_check/
+**/build_current/
+**/build_actual/
+**/build_*/
+**/CMakeFiles/
+**/compile_commands.json
+**/cmake_install.cmake
+**/sdkconfig
+**/sdkconfig.old
+**/__pycache__/
+**/*.pyc
