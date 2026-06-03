@@ -448,17 +448,17 @@ class PlotPanel(QWidget):
 #        10=calpha 11=curve_damp 12=test_vl 13=test_vr
 # ─────────────────────────────────────────────────────────────────────────────
 _GAIN_DEFS = [
-    (0,  "kpi",    "P balance",               "0.0000"),
-    (1,  "kdi",    "D balance",               "0.0000"),
-    (2,  "kpv",    "P veloc.",                "0.0000"),
-    (3,  "kiv",    "I veloc.",                "0.0000"),
-    (4,  "kpo",    "P orient.",               "0.0000"),
-    (5,  "kdo",    "D orient.",               "0.0000"),
+    (0,  "kpi",    "P balance",               "2.2000"),
+    (1,  "kdi",    "D balance",               "0.1600"),
+    (2,  "kpv",    "P veloc.",                "1.0000"),
+    (3,  "kiv",    "I veloc.",                "2.0000"),
+    (4,  "kpo",    "P orient.",               "0.0900"),
+    (5,  "kdo",    "D orient.",               "0.0100"),
     (6,  "vd",     "Vel. ref (m/s)",          "0.0000"),
     (7,  "ramp",   "Rampa",                   "0.0000"),
     (8,  "α_ref",  "Alpha ref (rad)",         "0.0000"),
     (9,  "c1",     "Filtro complementario",   "0.9950"),
-    (10, "calpha", "Offset angulo (rad)",     "0.1030"),
+    (10, "calpha", "Offset angulo (rad)",     "0.1450"),
     (11, "curva",  "Amort. curvas [0-1]",     "0.5000"),
 ]
 

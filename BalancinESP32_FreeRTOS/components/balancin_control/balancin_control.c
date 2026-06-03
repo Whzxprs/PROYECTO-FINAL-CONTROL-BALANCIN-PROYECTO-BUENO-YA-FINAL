@@ -14,15 +14,18 @@ static float clampf(float value, float lo, float hi)
     return value;
 }
 
-static uint8_t encode_u8(float value)
+static void put_u16_le(uint8_t *packet, size_t *offset, uint16_t value)
 {
-    int encoded = (int)lrintf(value);
-    if (encoded > 255) {
-        encoded = 255;
-    } else if (encoded < 0) {
-        encoded = 0;
-    }
-    return (uint8_t)encoded;
+    packet[*offset] = (uint8_t)(value & 0xFF);
+    (*offset)++;
+    packet[*offset] = (uint8_t)((value >> 8) & 0xFF);
+    (*offset)++;
+}
+
+static void put_f32_le(uint8_t *packet, size_t *offset, float value)
+{
+    memcpy(&packet[*offset], &value, sizeof(value));
+    *offset += sizeof(value);
 }
 
 void balancin_control_init(balancin_control_t *ctrl)
@@ -38,6 +41,7 @@ void balancin_control_init(balancin_control_t *ctrl)
     ctrl->kiv = BAL_KIV;
     ctrl->kpo = BAL_KPO;
     ctrl->kdo = BAL_KDO;
+    ctrl->calpha = BAL_CALPHA;
 
     ctrl->accelx = 0.15f;
     ctrl->angulox = 0.15f;
@@ -94,7 +98,7 @@ void balancin_control_step(balancin_control_t *ctrl)
     ctrl->angulox_1 = ctrl->angulox;
 
     ctrl->alpha = -ctrl->angulox;
-    ctrl->alpha = ctrl->alpha - BAL_CALPHA;
+    ctrl->alpha = ctrl->alpha - ctrl->calpha;
     ctrl->alpha = clampf(ctrl->alpha, -BAL_ALPHAM, BAL_ALPHAM);
 
     ctrl->v = (ctrl->omegar + ctrl->omegal) * BAL_R / 2.0f;
@@ -135,6 +139,13 @@ void balancin_control_step(balancin_control_t *ctrl)
     ctrl->ur = ctrl->taur * ctrl->Rasnkm + ctrl->nkm * ctrl->omegar;
     ctrl->ur = clampf(ctrl->ur, -BAL_UNM, BAL_UNM);
 
+    if (ctrl->test_ul != 0.0f) {
+        ctrl->ul = clampf(ctrl->test_ul, -BAL_UNM, BAL_UNM);
+    }
+    if (ctrl->test_ur != 0.0f) {
+        ctrl->ur = clampf(ctrl->test_ur, -BAL_UNM, BAL_UNM);
+    }
+
     ctrl->left_pwm = (int)lrintf(clampf(ctrl->escs * ctrl->ul,
                                         -(float)BAL_PWM_MAX,
                                         (float)BAL_PWM_MAX));
@@ -145,16 +156,85 @@ void balancin_control_step(balancin_control_t *ctrl)
     ctrl->t += BAL_TS;
 }
 
-void balancin_control_make_legacy_packet(const balancin_control_t *ctrl,
-                                         uint8_t packet[BALANCIN_LEGACY_PACKET_SIZE])
+bool balancin_control_apply_command(balancin_control_t *ctrl,
+                                    uint8_t cmd_id,
+                                    float value)
 {
-    packet[0] = 0xAA;
-    packet[1] = encode_u8(ctrl->mv * ctrl->vd + 127.0f);
-    packet[2] = encode_u8(ctrl->mv * ctrl->v + 127.0f);
-    packet[3] = encode_u8(ctrl->mtheta * ctrl->theta + 127.0f);
-    packet[4] = encode_u8(ctrl->malpha * ctrl->alpha + 127.0f);
-    packet[5] = encode_u8(ctrl->momega * ctrl->omegal + 127.0f);
-    packet[6] = encode_u8(ctrl->momega * ctrl->omegar + 127.0f);
-    packet[7] = encode_u8(ctrl->mu * ctrl->ul + 127.0f);
-    packet[8] = encode_u8(ctrl->mu * ctrl->ur + 127.0f);
+    if (!isfinite(value)) {
+        return false;
+    }
+
+    switch (cmd_id) {
+    case 0:
+        ctrl->kpi = value;
+        break;
+    case 1:
+        ctrl->kdi = value;
+        break;
+    case 2:
+        ctrl->kpv = value;
+        break;
+    case 3:
+        ctrl->kiv = value;
+        break;
+    case 4:
+        ctrl->kpo = value;
+        break;
+    case 5:
+        ctrl->kdo = value;
+        break;
+    case 6:
+        ctrl->vd = value;
+        break;
+    case 7:
+        break;
+    case 8:
+        ctrl->alphad = value;
+        break;
+    case 9:
+        ctrl->c1 = clampf(value, 0.0f, 1.0f);
+        ctrl->c2 = 1.0f - ctrl->c1;
+        break;
+    case 10:
+        ctrl->calpha = value;
+        break;
+    case 11:
+        break;
+    case 12:
+        ctrl->test_ul = clampf(value, -BAL_UNM, BAL_UNM);
+        break;
+    case 13:
+        ctrl->test_ur = clampf(value, -BAL_UNM, BAL_UNM);
+        break;
+    default:
+        return false;
+    }
+
+    return true;
+}
+
+void balancin_control_make_telemetry_v2_packet(
+    const balancin_control_t *ctrl,
+    uint16_t sl_raw,
+    uint16_t sr_raw,
+    uint16_t seq,
+    uint8_t flags,
+    uint8_t packet[BALANCIN_TELEMETRY_PACKET_V2_SIZE])
+{
+    size_t offset = 0;
+
+    packet[offset++] = 0xAB;
+    packet[offset++] = BALANCIN_TELEMETRY_VERSION;
+    put_u16_le(packet, &offset, seq);
+    put_f32_le(packet, &offset, ctrl->vd);
+    put_f32_le(packet, &offset, ctrl->v);
+    put_f32_le(packet, &offset, ctrl->theta);
+    put_f32_le(packet, &offset, ctrl->alpha);
+    put_f32_le(packet, &offset, ctrl->omegal);
+    put_f32_le(packet, &offset, ctrl->omegar);
+    put_f32_le(packet, &offset, ctrl->ul);
+    put_f32_le(packet, &offset, ctrl->ur);
+    put_u16_le(packet, &offset, sl_raw);
+    put_u16_le(packet, &offset, sr_raw);
+    packet[offset++] = flags;
 }

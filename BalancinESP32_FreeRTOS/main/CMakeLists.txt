@@ -7,5 +7,5 @@ idf_component_register(
         line_adc
         motor_l298n
         mpu6050
-        wifi_tcp
+        wifi_sta_udp
 )

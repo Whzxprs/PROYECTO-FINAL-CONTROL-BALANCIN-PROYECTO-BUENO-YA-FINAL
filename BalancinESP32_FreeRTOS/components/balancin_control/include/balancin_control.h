@@ -1,13 +1,15 @@
 #pragma once
 
 #include <stddef.h>
+#include <stdbool.h>
 #include <stdint.h>
 
 #define BALANCIN_CONTROL_PERIOD_MS 10
-#define BALANCIN_LEGACY_PACKET_SIZE 9
+#define BALANCIN_TELEMETRY_VERSION 2
+#define BALANCIN_TELEMETRY_PACKET_V2_SIZE 41
 
 /* References from _TEORIA/variables_fisicas.txt. */
-#define BAL_VD     0.1f
+#define BAL_VD     0.0f
 #define BAL_ALPHAD 0.0f
 #define BAL_THETAD 0.0f
 
@@ -61,6 +63,9 @@ typedef struct {
     float kiv;
     float kpo;
     float kdo;
+    float calpha;
+    float test_ul;
+    float test_ur;
 
     float sl;
     float sr;
@@ -123,5 +128,13 @@ void balancin_control_set_inputs(balancin_control_t *ctrl,
                                  float incr,
                                  float incl);
 void balancin_control_step(balancin_control_t *ctrl);
-void balancin_control_make_legacy_packet(const balancin_control_t *ctrl,
-                                         uint8_t packet[BALANCIN_LEGACY_PACKET_SIZE]);
+bool balancin_control_apply_command(balancin_control_t *ctrl,
+                                     uint8_t cmd_id,
+                                     float value);
+void balancin_control_make_telemetry_v2_packet(
+    const balancin_control_t *ctrl,
+    uint16_t sl_raw,
+    uint16_t sr_raw,
+    uint16_t seq,
+    uint8_t flags,
+    uint8_t packet[BALANCIN_TELEMETRY_PACKET_V2_SIZE]);

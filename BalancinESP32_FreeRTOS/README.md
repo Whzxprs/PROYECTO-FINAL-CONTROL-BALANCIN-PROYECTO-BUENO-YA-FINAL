@@ -42,12 +42,27 @@ idf.py build
 idf.py flash monitor
 ```
 
-El firmware crea un AP WiFi:
+El firmware se conecta a una red WiFi existente en modo STA. El nombre de red, password, IP destino de la PC y puerto se cambian en `components/board/include/board_pins.h`:
 
-- SSID: `balancin`
-- Password: `1q2w3e4r`
-- TCP: `192.168.4.1:4545`
+```c
+#define BALANCIN_WIFI_SSID "..."
+#define BALANCIN_WIFI_PASS "..."
+#define BALANCIN_UDP_TELEMETRY_HOST "192.168.4.2"
+#define BALANCIN_UDP_TELEMETRY_PORT 5005
+#define BALANCIN_UDP_COMMAND_PORT 5006
+```
 
-Por TCP envia el paquete legacy de 9 bytes:
+`BALANCIN_WIFI_SSID` y `BALANCIN_WIFI_PASS` son el nombre y password del WiFi al que se conectan la ESP32 y la PC. `BALANCIN_UDP_TELEMETRY_HOST` debe ser la IP de la PC dentro de esa misma red WiFi. En Windows se puede revisar con `ipconfig`, normalmente en el adaptador de WiFi como `Direccion IPv4`.
 
-`0xAA, vd, v, theta, alpha, omega_l, omega_r, u_l, u_r`
+Para `../monitor/monitor.py` envia telemetria UDP v2 a 5 Hz:
+
+`0xAB, version=2, seq, vd, v, theta, alpha, omega_l, omega_r, u_l, u_r, sl_raw, sr_raw, flags`
+
+Uso sugerido del monitor:
+
+1. Carga este firmware en el ESP32.
+2. Conecta la PC al mismo WiFi configurado en `BALANCIN_WIFI_SSID`.
+3. Ejecuta `python monitor.py` desde la carpeta `monitor`.
+4. Deja el puerto en `5005` y pulsa `Escuchar`.
+
+Los botones de ganancias/prueba del monitor envian comandos UDP a `5006` con formato `0xBB, id, float32_LE`. Este firmware procesa `0..5` ganancias, `6` velocidad de referencia, `8` referencia de inclinacion, `9` filtro complementario, `10` offset de angulo y `12..13` prueba de motores por rueda. `7` y `11` quedan reservados.
